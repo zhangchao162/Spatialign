@@ -1,7 +1,6 @@
 [![python >=3.8.0](https://img.shields.io/badge/python-3.8.0-brightgreen)](https://www.python.org/)      
 # Spatialign: a batch alignment method for spatial transcriptomics via spatial embedding and unsupervised cross-domain adaptation contrastive learning                         
 The integration of multiple spatially resolved transcriptomics (SRT) datasets can enhance the statistical power to investigate biological phenomena. However, batch effects can lead to irregular data distribution between sections, potentially compromising the reliability of downstream analyses. While various data integration methods have been developed, most are designed for scRNA-seq datasets without considering spatial context. Therefore, we propose Spatialign, an unsupervised cross-domain adaptation method that utilizes contrastive learning and spatial embedding to align latent representations and denoise gene expression profiles. We perform benchmarking analyses on four publicly available SRT datasets, demonstrating the superior performance of Spatialign compared to state-of-the-art methods. Furthermore, Spatialign is shown to be applicable to SRT datasets from diverse platforms. Overall, our results highlight the potential of Spatialign to improve the reliability of downstream analyses in spatially resolved transcriptomics studies.       
-<img src="imgs/spatialign_Figures.png" width="500">
             
 # Dependences       
 [![anndata-0.8.0](https://img.shields.io/badge/anndata-0.8.0-red)](https://pypi.org/project/anndata/#history)
@@ -11,8 +10,6 @@ The integration of multiple spatially resolved transcriptomics (SRT) datasets ca
 [![torch_cluster-1.5.9](https://img.shields.io/badge/torch_cluster-1.5.9-green)](https://data.pyg.org/whl/torch-1.10.0%2Bcu113.html)
 [![torch_scatter-2.0.9](https://img.shields.io/badge/torch_scatter-2.0.9-informational)](https://data.pyg.org/whl/torch-1.10.0%2Bcu113.html)
 [![torch_sparse-0.6.12](https://img.shields.io/badge/torch_sparse-0.6.12-9cf)](https://data.pyg.org/whl/torch-1.10.0%2Bcu113.html)          
-# Pseudo codes          
-<img src="imgs/pseudo_codes.png" width="400">
         
 # Publicly available datasets            
 - Stereo-seq Datasets: mouse olfactory bulb dataset has been deposited into CNGB Sequence Archive (CNSA) of China National GeneBank DataBase (CNGBdb) with accession number CNP001543, and the spatiotemporal dataset of mouse embryonic brain is available at https://db.cngb.org/stomics/mosta.          
