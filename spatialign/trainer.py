@@ -189,35 +189,37 @@ class Spatialign:
         early_stop = EarlyStopping(patience=patient)
         optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.95)
-        scaler = torch.cuda.amp.GradScaler()
+        # scaler = torch.cuda.amp.GradScaler()
         self.model.train()
 
         for eph in range(max_epoch):
             epoch_loss = []
             for idx, data in enumerate(self.dataset.loader_list):
                 data = data.to(self.device, non_blocking=True)
-                with torch.cuda.amp.autocast():
-                    graph_loss, dgi_loss, recon_loss, latent_x, recon_x = self.model(
-                        x=data.x, edge_index=data.edge_index, edge_weight=data.edge_weight, domain_idx=data.domain_idx,
-                        neigh_mask=data.neigh_graph)
+                # with torch.cuda.amp.autocast():
+                graph_loss, dgi_loss, recon_loss, latent_x, recon_x = self.model(
+                    x=data.x, edge_index=data.edge_index, edge_weight=data.edge_weight, domain_idx=data.domain_idx,
+                    neigh_mask=data.neigh_graph)
 
-                    # update memory bank
-                    self.update_bank(idx, latent_x, alpha=alpha)
-                    intra_inst = contrast_loss(feat1=latent_x, feat2=self.header_bank[idx], tau=tau1, weight=1.)
-                    intra_clst = contrast_loss(feat1=latent_x.T, feat2=self.header_bank[idx].T, tau=tau1, weight=1.)
-                    # Maximize clustering entropy to avoid all data clustering into the same class
-                    entropy_clst = trivial_entropy(feat=latent_x, tau=tau2, weight=1.)
-                    loss = graph_loss + dgi_loss + recon_loss + intra_inst + entropy_clst + intra_clst
-                    for i in np.delete(range(len(self.dataset.data_list)), idx):
-                        inter_loss = cross_instance_loss(
-                            feat1=latent_x, feat2=self.header_bank[i], tau=tau3, weight=1.)
-                        loss += inter_loss
+                # update memory bank
+                self.update_bank(idx, latent_x, alpha=alpha)
+                intra_inst = contrast_loss(feat1=latent_x, feat2=self.header_bank[idx], tau=tau1, weight=1.)
+                intra_clst = contrast_loss(feat1=latent_x.T, feat2=self.header_bank[idx].T, tau=tau1, weight=1.)
+                # Maximize clustering entropy to avoid all data clustering into the same class
+                entropy_clst = trivial_entropy(feat=latent_x, tau=tau2, weight=1.)
+                loss = graph_loss + dgi_loss + recon_loss + intra_inst + entropy_clst + intra_clst
+                for i in np.delete(range(len(self.dataset.data_list)), idx):
+                    inter_loss = cross_instance_loss(
+                        feat1=latent_x, feat2=self.header_bank[i], tau=tau3, weight=1.)
+                    loss += inter_loss
 
                 epoch_loss.append(loss)
             optimizer.zero_grad()
-            scaler.scale(sum(epoch_loss)).backward()
-            scaler.step(optimizer)
-            scaler.update()
+            # scaler.scale(sum(epoch_loss)).backward()
+            # scaler.step(optimizer)
+            # scaler.update()
+            sum(epoch_loss).backward()
+            optimizer.step()
             scheduler.step()
 
             early_stop(sum(epoch_loss).detach().cpu().numpy())
