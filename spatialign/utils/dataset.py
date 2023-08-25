@@ -13,10 +13,37 @@ from anndata import AnnData
 from torch_geometric.data import Data
 from torch_geometric.utils import to_undirected
 
-from utils import get_format_time
+from spatialign.utils import get_format_time
 
 
 class Dataset:
+    """
+    Multiple dataset loading, preprocessing and convert to dataloader
+    :param data_path: str
+        Input dataset path.
+    :param min_genes: int
+        Minimum number of genes expressed required for a cell to pass filtering, default 20.
+    :param min_cells: int
+        Minimum number of cells expressed required for a gene to pass filtering, default 20.
+    :param batch_key: str
+        the batch annotation to :attr:`obs` using this key, default, 'batch'.
+    :param is_norm_log: bool
+        Whether to perform 'sc.pp.normalize_total' and 'sc.pp.log1p' processing, default, True.
+    :param is_scale: bool
+        Whether to perform 'sc.pp.scale' processing, default, False.
+    :param is_hvg: bool
+        Whether to perform 'sc.pp.highly_variable_genes' processing, default, False.
+    :param is_reduce: bool
+        Whether to perform PCA reduce dimensional processing, default, False.
+    :param n_pcs: int
+        PCA dimension reduction parameter, valid when 'is_reduce' is True, default, 100.
+    :param n_hvg: int
+        'sc.pp.highly_variable_genes' parameter, valid when 'is_reduce' is True, default, 2000.
+    :param n_neigh: int
+        The number of neighbors selected when constructing a spatial neighbor graph. default, 15.
+    :param is_undirected: bool
+        Whether the constructed spatial neighbor graph is undirected graph, default, True.
+    """
     def __init__(self,
                  *data_path: str,
                  min_genes: int = 20,
@@ -30,33 +57,7 @@ class Dataset:
                  n_hvg: int = 2000,
                  n_neigh: int = 15,
                  is_undirected: bool = True):
-        """
-        Multiple dataset loading, preprocessing and convert to dataloader
-        :param data_path: str
-            Input dataset path.
-        :param min_genes: int
-            Minimum number of genes expressed required for a cell to pass filtering, default 20.
-        :param min_cells: int
-            Minimum number of cells expressed required for a gene to pass filtering, default 20.
-        :param batch_key: str
-            the batch annotation to :attr:`obs` using this key, default, 'batch'.
-        :param is_norm_log: bool
-            Whether to perform 'sc.pp.normalize_total' and 'sc.pp.log1p' processing, default, True.
-        :param is_scale: bool
-            Whether to perform 'sc.pp.scale' processing, default, False.
-        :param is_hvg: bool
-            Whether to perform 'sc.pp.highly_variable_genes' processing, default, False.
-        :param is_reduce: bool
-            Whether to perform PCA reduce dimensional processing, default, False.
-        :param n_pcs: int
-            PCA dimension reduction parameter, valid when 'is_reduce' is True, default, 100.
-        :param n_hvg: int
-            'sc.pp.highly_variable_genes' parameter, valid when 'is_reduce' is True, default, 2000.
-        :param n_neigh: int
-            The number of neighbors selected when constructing a spatial neighbor graph. default, 15.
-        :param is_undirected: bool
-            Whether the constructed spatial neighbor graph is undirected graph, default, True.
-        """
+
         self.data_path = data_path
         self.is_norm_log = is_norm_log
         self.is_scale = is_scale

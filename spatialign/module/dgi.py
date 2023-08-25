@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from module import FeatEmbed, ResidualEmbed, GraphVAE, EmbeddingLayer
+from spatialign.module import FeatEmbed, ResidualEmbed, GraphVAE, EmbeddingLayer
 
 
 class Encoder(nn.Module):

@@ -1,6 +1,8 @@
-[![python >=3.8.0](https://img.shields.io/badge/python-3.8.0-brightgreen)](https://www.python.org/)      
-# An Unsupervised Contrastive Learning Model for Data Integration of Spatially Resolved Transcriptomics               
-Integrative analysis of spatially resolved transcriptomics datasets empowers a deeper understanding of complex biological systems. However, integrating multiple tissue sections presents challenges for batch effects removal, particularly when the sections are measured by various technologies or collected at different times. Here we propose spatiAlign, an unsupervised contrastive learning model that employs the expression of all measured genes and spatial location of cells, to integrate multiple tissue sections. It enables the joint downstream analysis of multiple datasets not only in low-dimensional embeddings, but also in the reconstructed full expression space. In benchmarking analysis, spatiAlign outperforms state-of-the-art methods in learning joint and discriminative representations for tissue sections, each potentially characterized by complex batch effects or unique biological characteristics. Furthermore, we demonstrate spatiAlign’s benefits for the integrative analysis of time-series brain sections, including spatial clustering, differential expression analysis, and particularly the trajectory inference that requires corrected gene expression matrix.
+[![python >=3.8.0](https://img.shields.io/badge/python-3.8.0-brightgreen)](https://www.python.org/)
+[![spatiAlign_Tutorial-latest](https://img.shields.io/badge/Documentation-latest-informational)](https://spatialign-tutorials.readthedocs.io/en/latest/Installation.html)
+[![Pypi Downloads](https://static.pepy.tech/badge/spatialign)](https://pepy.tech/project/spatialign)
+# Spatialign: a batch alignment method for spatial transcriptomics via spatial embedding and unsupervised cross-domain adaptation               
+The integration of multiple spatially resolved transcriptomics (SRT) datasets can enhance the statistical power to investigate biological phenomena. However, batch effects can lead to irregular data distribution between sections, potentially compromising the reliability of downstream analyses. While various data integration methods have been developed, most are designed for scRNA-seq datasets without considering spatial context. Therefore, we propose Spatialign, an unsupervised cross-domain adaptation method that utilizes contrastive learning and spatial embedding to align latent representations and denoise gene expression profiles. We perform benchmarking analyses on four publicly available SRT datasets, demonstrating the superior performance of Spatialign compared to state-of-the-art methods. Furthermore, Spatialign is shown to be applicable to SRT datasets from diverse platforms. Overall, our results highlight the potential of Spatialign to improve the reliability of downstream analyses in spatially resolved transcriptomics studies.
             
 # Dependences       
 [![anndata-0.8.0](https://img.shields.io/badge/anndata-0.8.0-red)](https://pypi.org/project/anndata/#history)
@@ -18,10 +20,8 @@ Integrative analysis of spatially resolved transcriptomics datasets empowers a d
 - Slide-seq Datasets: (mouse hippocampus datasets) https://singlecell.broadinstitute.org/single_cell/study/SCP815/highly-sensitive-spatial-transcriptomics-at-near-cellular-resolution-with-slide-seqv2#study-summary, https://singlecell.broadinstitute.org/single_cell/study/SCP354/slide-seq-study#study-summary, and https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-summary, respectively.
 
 # Install     
-- [Quick Start](https://spatialign-tutorials.readthedocs.io/en/latest/)
-
 ```python
-pip install spatialign
+pip install Spatialign
 ```
         
 # Usage
@@ -53,6 +53,7 @@ model.alignment()  # remove batch effects and align datasets distibution
         
 # Disclaimer        
 ***This is not an official product.***        
-         
+        
+# License       
 
         

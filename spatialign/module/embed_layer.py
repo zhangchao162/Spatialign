@@ -6,7 +6,7 @@
 # @Email   : zhangchao5@genomics.cn
 import torch.nn as nn
 
-from module import DomainSpecificBN1d
+from spatialign.module import DomainSpecificBN1d
 
 
 class EmbeddingLayer(nn.Module):

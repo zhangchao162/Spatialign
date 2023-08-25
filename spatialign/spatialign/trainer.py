@@ -4,6 +4,7 @@
 # @Author  : zhangchao
 # @File    : trainer.py
 # @Email   : zhangchao5@genomics.cn
+# cython: language_level=3
 import os
 import os.path as osp
 import torch
@@ -14,14 +15,15 @@ import scipy.sparse as sp
 from anndata import AnnData
 from typing import Union
 from collections import defaultdict
-from module import contrast_loss, trivial_entropy, cross_instance_loss
-from spatialign import DGIAlignment
-from utils import get_format_time, Dataset, get_running_time, EarlyStopping
+
+from spatialign.module import contrast_loss, trivial_entropy, cross_instance_loss
+from spatialign.utils import Dataset, get_format_time, get_running_time, EarlyStopping
+from spatialign.spatialign import DGIAlignment
 
 
 class Spatialign:
     """
-    Spatialign Model
+    spatialign Model
     :param data_path:
         Input dataset path.
     :param min_genes:
@@ -48,6 +50,8 @@ class Spatialign:
         Whether the constructed spatial neighbor graph is undirected graph, default, True.
     :param latent_dims:
         The number of embedding dimensions, default, 100.
+    :param is_verbose:
+        Whether the detail information is print, default, True.
     :param seed:
         Random seed.
     :param gpu:
@@ -70,6 +74,7 @@ class Spatialign:
                  n_neigh: int = 15,
                  is_undirected: bool = True,
                  latent_dims: int = 100,
+                 is_verbose: bool = True,
                  seed: int = 42,
                  gpu: Union[int, str, None] = None,
                  save_path: str = None):
@@ -88,7 +93,7 @@ class Spatialign:
                                n_hvg=n_hvg,
                                n_neigh=n_neigh,
                                is_undirected=is_undirected)
-        self.model = self.set_model(latent_dims=latent_dims, n_domain=self.dataset.n_domain)
+        self.model = self.set_model(latent_dims=latent_dims, n_domain=self.dataset.n_domain, is_verbose=is_verbose)
         self.header_bank = self.init_bank()
 
     def set_seed(self, seed=42, n_thread=24):
@@ -119,13 +124,14 @@ class Spatialign:
         os.makedirs(res_path, exist_ok=True)
         return ckpt_path, res_path
 
-    def set_model(self, latent_dims, n_domain):
+    def set_model(self, latent_dims, n_domain, is_verbose):
         model = DGIAlignment(input_dims=self.dataset.inner_dims,
                              output_dims=latent_dims,
                              n_domain=n_domain,
                              act=nn.ELU(),
                              p=0.2)
-        print(f"{get_format_time()} {model.__class__.__name__}: \n{model}")
+        if is_verbose:
+            print(f"{get_format_time()} {model.__class__.__name__}: \n{model}")
         model.to(self.device)
         return model
 

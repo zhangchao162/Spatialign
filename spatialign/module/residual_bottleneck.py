@@ -6,7 +6,7 @@
 # @Email   : zhangchao5@genomics.cn
 import torch.nn as nn
 
-from module import EmbeddingLayer
+from spatialign.module import EmbeddingLayer
 
 
 class ResidualLayer(nn.Module):

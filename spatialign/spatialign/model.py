@@ -6,7 +6,7 @@
 # @Email   : zhangchao5@genomics.cn
 import torch.nn as nn
 
-from module import DGI, EmbeddingLayer, scale_mse
+from spatialign.module import DGI, EmbeddingLayer, scale_mse
 
 
 class DGIAlignment(nn.Module):
