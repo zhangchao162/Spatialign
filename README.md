@@ -1,11 +1,10 @@
 [![python >=3.8.0](https://img.shields.io/badge/python-3.8.0-brightgreen)](https://www.python.org/)
+[![spatiAlign_Tutorial-latest](https://img.shields.io/badge/Documentation-latest-informational)](https://spatialign-tutorials.readthedocs.io/en/latest/Installation.html)
 [![Downloads](https://static.pepy.tech/badge/spatialign)](https://pepy.tech/project/spatialign)
-[![Downloads](https://static.pepy.tech/badge/spatialign/month)](https://pepy.tech/project/spatialign)
-[![Downloads](https://static.pepy.tech/badge/spatialign/week)](https://pepy.tech/project/spatialign)
-[![stars](https://img.shields.io/github/stars/zhangchao162/Spatialign?logo=GitHub&color=yellow)](https://img.shields.io/github/stars/zhangchao162/Spatialign) 
-# An Unsupervised Contrastive Learning Model for Data Integration of Spatially Resolved Transcriptomics               
-Integrative analysis of spatially resolved transcriptomics datasets empowers a deeper understanding of complex biological systems. However, integrating multiple tissue sections presents challenges for batch effects removal, particularly when the sections are measured by various technologies or collected at different times. Here we propose spatiAlign, an unsupervised contrastive learning model that employs the expression of all measured genes and spatial location of cells, to integrate multiple tissue sections. It enables the joint downstream analysis of multiple datasets not only in low-dimensional embeddings, but also in the reconstructed full expression space. In benchmarking analysis, spatiAlign outperforms state-of-the-art methods in learning joint and discriminative representations for tissue sections, each potentially characterized by complex batch effects or unique biological characteristics. Furthermore, we demonstrate spatiAlign’s benefits for the integrative analysis of time-series brain sections, including spatial clustering, differential expression analysis, and particularly the trajectory inference that requires corrected gene expression matrix.
+# spatiAlign: An Unsupervised Contrastive Learning Model for Data Integration of Spatially Resolved Transcriptomics
+Integrative analysis of spatially resolved transcriptomics datasets empowers a deeper understanding of complex biological systems. However, integrating multiple tissue sections presents challenges for batch effect removal, particularly when the sections are measured by various technologies or collected at different times. Here, we propose spatiAlign, an unsupervised contrastive learning model that employs the expression of all measured genes and the spatial location of cells, to integrate multiple tissue sections. It enables the joint downstream analysis of multiple datasets not only in low-dimensional embeddings but also in the reconstructed full expression space. In benchmarking analysis, spatiAlign outperforms state-of-the-art methods in learning joint and discriminative representations for tissue sections, each potentially characterized by complex batch effects or distinct biological characteristics. Furthermore, we demonstrate the benefits of spatiAlign for the integrative analysis of time-series brain sections, including spatial clustering, differential expression analysis, and particularly trajectory inference that requires a corrected gene expression matrix.
             
+        
 # Dependences       
 [![anndata-0.8.0](https://img.shields.io/badge/anndata-0.8.0-red)](https://pypi.org/project/anndata/#history)
 [![scanpy-1.8.2](https://img.shields.io/badge/scanpy-1.8.2-lightgrey)](https://pypi.org/project/scanpy/)
@@ -15,20 +14,31 @@ Integrative analysis of spatially resolved transcriptomics datasets empowers a d
 [![torch_scatter-2.0.9](https://img.shields.io/badge/torch_scatter-2.0.9-informational)](https://data.pyg.org/whl/torch-1.10.0%2Bcu113.html)
 [![torch_sparse-0.6.12](https://img.shields.io/badge/torch_sparse-0.6.12-9cf)](https://data.pyg.org/whl/torch-1.10.0%2Bcu113.html)           
 
+
+# News  
+- [2023.08.13]     
+  spatiAlign is online at [BioRxiv](https://doi.org/10.1101/2023.08.08.552402).        
+  doi: [https://doi.org/10.1101/2023.08.08.552402](https://doi.org/10.1101/2023.08.08.552402)           
         
-# Publicly available datasets            
-- Stereo-seq Datasets: mouse olfactory bulb dataset has been deposited into CNGB Sequence Archive (CNSA) of China National GeneBank DataBase (CNGBdb) with accession number CNP001543, and the spatiotemporal dataset of mouse embryonic brain is available at https://db.cngb.org/stomics/mosta.          
-- 10x Genomics Visium Dataset: (mouse olfactory bulb) https://www.10xgenomics.com/resources/datasets/adult-mouse-olfactory-bulb-1-standard. And (DLPFC datasets): https://zenodo.org/record/6925603#.YuM5WXZBwuU  
-- Slide-seq Datasets: (mouse hippocampus datasets) https://singlecell.broadinstitute.org/single_cell/study/SCP815/highly-sensitive-spatial-transcriptomics-at-near-cellular-resolution-with-slide-seqv2#study-summary, https://singlecell.broadinstitute.org/single_cell/study/SCP354/slide-seq-study#study-summary, and https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-summary, respectively.
-
 # Install     
-- [Quick Start](https://spatialign-tutorials.readthedocs.io/en/latest/)
-
+- Install through [Pypi](https://pypi.org/project/spatialign/)
 ```python
 pip install spatialign
 ```
+
+- or git clone
+```python
+git clone https://github.com/STOmics/Spatialign.git
+
+cd Spatialign
+
+python setup.py install
+```        
         
-# Usage
+        
+# Tutorial
+- [Quick Start](https://spatialign-tutorials.readthedocs.io/en/latest/)
+                        
 
 ```python
 from spatialign import Spatialign
@@ -55,8 +65,16 @@ model.alignment()  # remove batch effects and align datasets distibution
 ```
 #### ***Note: For more formal parameter descriptions, see the comments of corresponding functions.***           
         
+        
+# Publicly available datasets            
+- Stereo-seq Datasets: mouse olfactory bulb dataset has been deposited into CNGB Sequence Archive (CNSA) of China National GeneBank DataBase (CNGBdb) with accession number CNP001543, and the spatiotemporal dataset of mouse embryonic brain is available at https://db.cngb.org/stomics/mosta.          
+- 10x Genomics Visium Dataset: (mouse olfactory bulb) https://www.10xgenomics.com/resources/datasets/adult-mouse-olfactory-bulb-1-standard. And (DLPFC datasets): https://zenodo.org/record/6925603#.YuM5WXZBwuU  
+- Slide-seq Datasets: (mouse hippocampus datasets) https://singlecell.broadinstitute.org/single_cell/study/SCP815/highly-sensitive-spatial-transcriptomics-at-near-cellular-resolution-with-slide-seqv2#study-summary, https://singlecell.broadinstitute.org/single_cell/study/SCP354/slide-seq-study#study-summary, and https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-summary, respectively.
+        
+        
 # Disclaimer        
 ***This is not an official product.***        
-         
-
+        
+        
+            
         
