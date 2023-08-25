@@ -18,7 +18,21 @@ Integrative analysis of spatially resolved transcriptomics datasets empowers a d
 # News  
 - [2023.08.13]     
   spatiAlign is online at [BioRxiv](https://doi.org/10.1101/2023.08.08.552402).        
-  doi: [https://doi.org/10.1101/2023.08.08.552402](https://doi.org/10.1101/2023.08.08.552402)           
+  doi: [https://doi.org/10.1101/2023.08.08.552402](https://doi.org/10.1101/2023.08.08.552402)
+            
+# Citation
+If you use `spatiAlign` in your work, please cite the publication as follows:
+```
+@article {Zhang2023.08.08.552402,
+	author = {Chao Zhang and Lin Liu and Ying Zhang and Mei Li and Shuangsang Fang and Qiang Kang and Ao Chen and Xun Xu and Yong Zhang and Yuxiang Li},
+	title = {spatiAlign: An Unsupervised Contrastive Learning Model for Data Integration of Spatially Resolved Transcriptomics},
+	elocation-id = {2023.08.08.552402},
+	year = {2023},
+	doi = {10.1101/2023.08.08.552402},
+	URL = {https://www.biorxiv.org/content/early/2023/08/15/2023.08.08.552402},
+	journal = {bioRxiv}
+}
+```
         
 # Install     
 - Install through [Pypi](https://pypi.org/project/spatialign/)
