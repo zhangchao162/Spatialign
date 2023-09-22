@@ -18,10 +18,10 @@ from collections import defaultdict
 
 from spatialign.module import contrast_loss, trivial_entropy, cross_instance_loss
 from spatialign.utils import Dataset, get_format_time, get_running_time, EarlyStopping
-from spatialign.spatialign import DGIAlignment
+from spatialign.spatialign import DGIAlignment, spatiAlignBase
 
 
-class Spatialign:
+class Spatialign(spatiAlignBase):
     """
     spatialign Model
     :param data_path:
@@ -46,6 +46,8 @@ class Spatialign:
         'sc.pp.highly_variable_genes' parameter, valid when 'is_reduce' is True, default, 2000.
     :param n_neigh:
         The number of neighbors selected when constructing a spatial neighbor graph. default, 15.
+    :param mask_rate:
+        The rate of training size.
     :param is_undirected:
         Whether the constructed spatial neighbor graph is undirected graph, default, True.
     :param latent_dims:
@@ -60,6 +62,7 @@ class Spatialign:
         The path of alignment dataset and saved spatialign.
     :return:
     """
+
     def __init__(self,
                  *data_path: str,
                  min_genes: int = 20,
@@ -72,15 +75,14 @@ class Spatialign:
                  n_pcs: int = 100,
                  n_hvg: int = 2000,
                  n_neigh: int = 15,
+                 mask_rate: Union[float, list] = .5,
                  is_undirected: bool = True,
                  latent_dims: int = 100,
                  is_verbose: bool = True,
                  seed: int = 42,
                  gpu: Union[int, str, None] = None,
                  save_path: str = None):
-        self.set_seed(seed)
-        self.device = self.set_device(gpu)
-        self.ckpt_path, self.res_path = self.init_path(save_path)
+        super(Spatialign, self).__init__(gpu=gpu, torch_thread=24, seed=seed, save_path=save_path)
         self.dataset = Dataset(*data_path,
                                min_genes=min_genes,
                                min_cells=min_cells,
@@ -92,37 +94,11 @@ class Spatialign:
                                n_pcs=n_pcs,
                                n_hvg=n_hvg,
                                n_neigh=n_neigh,
+                               mask_rate=mask_rate,
                                is_undirected=is_undirected)
+        self.latent_dims = latent_dims
         self.model = self.set_model(latent_dims=latent_dims, n_domain=self.dataset.n_domain, is_verbose=is_verbose)
         self.header_bank = self.init_bank()
-
-    def set_seed(self, seed=42, n_thread=24):
-        torch.set_num_threads(n_thread)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-        np.random.seed(seed)
-        random.seed(seed)
-
-    def set_device(self, gpu):
-        if torch.cuda.is_available() and gpu is not None:
-            if (float(gpu) % 2 == 0) and float(gpu) >= 0:
-                device = torch.device(f"cuda:{gpu}")
-            else:
-                print(f"{get_format_time}  Got an invalid GPU device ids, can not using GPU device to training...")
-                device = torch.device("cpu")
-        else:
-            device = torch.device("cpu")
-        return device
-
-    def init_path(self, save_path):
-        assert save_path is not None, "Error, Got an invalid save path"
-        ckpt_path = osp.join(save_path, "ckpt")
-        res_path = osp.join(save_path, "res")
-        os.makedirs(ckpt_path, exist_ok=True)
-        os.makedirs(res_path, exist_ok=True)
-        return ckpt_path, res_path
 
     def set_model(self, latent_dims, n_domain, is_verbose):
         model = DGIAlignment(input_dims=self.dataset.inner_dims,
@@ -135,30 +111,22 @@ class Spatialign:
         model.to(self.device)
         return model
 
-    def save_checkpoint(self):
-        assert osp.exists(self.ckpt_path)
-        torch.save(self.model.state_dict(), osp.join(self.ckpt_path, "spatialign.bgi"))
-
-    def load_checkpoint(self):
-        ckpt_file = osp.join(self.ckpt_path, "spatialign.bgi")
-        assert osp.exists(ckpt_file)
-        checkpoint = torch.load(ckpt_file, map_location=lambda storage, loc: storage)
-        state_dict = self.model.state_dict()
-        trained_dict = {k: v for k, v in checkpoint.items() if k in state_dict}
-        state_dict.update(trained_dict)
-        self.model.load_state_dict(state_dict)
-
     @torch.no_grad()
     @get_running_time
     def init_bank(self):
         self.model.eval()
         header_bank = defaultdict()
-        for idx, data in enumerate(self.dataset.loader_list):
-            data = data.to(self.device)
-            graph_loss, dgi_loss, recon_loss, latent_x, recon_x = self.model(
-                x=data.x, edge_index=data.edge_index, edge_weight=data.edge_weight, domain_idx=data.domain_idx,
-                neigh_mask=data.neigh_graph)
-            header_bank[idx] = latent_x.detach()
+
+        for data_idx, loader in enumerate(self.dataset.trainer_list):
+            data = next(iter(loader)).to(self.device)
+            neigh_graph = torch.zeros((data.num_nodes, data.num_nodes), dtype=torch.float, device=self.device)
+            neigh_graph[data.edge_index[0], data.edge_index[1]] = 1.
+            latent_x, neg_x, pos_summary, recon_x = self.model(x=data.x,
+                                                               edge_index=data.edge_index,
+                                                               edge_weight=data.edge_weight,
+                                                               domain_idx=data.domain_idx,
+                                                               neigh_mask=neigh_graph)
+            header_bank[data_idx] = latent_x[:data.batch_size].detach()
         return header_bank
 
     @torch.no_grad()
@@ -200,23 +168,41 @@ class Spatialign:
 
         for eph in range(max_epoch):
             epoch_loss = []
-            for idx, data in enumerate(self.dataset.loader_list):
-                data = data.to(self.device, non_blocking=True)
+            for idx, loader in enumerate(self.dataset.trainer_list):
+                data = next(iter(loader)).to(self.device, non_blocking=True)
+                neigh_graph = torch.zeros((data.num_nodes, data.num_nodes), dtype=torch.float, device=self.device)
+                neigh_graph[data.edge_index[0], data.edge_index[1]] = 1.
                 # with torch.cuda.amp.autocast():
-                graph_loss, dgi_loss, recon_loss, latent_x, recon_x = self.model(
-                    x=data.x, edge_index=data.edge_index, edge_weight=data.edge_weight, domain_idx=data.domain_idx,
-                    neigh_mask=data.neigh_graph)
+                latent_x, neg_x, pos_summary, recon_x = self.model(x=data.x,
+                                                                   edge_index=data.edge_index,
+                                                                   edge_weight=data.edge_weight,
+                                                                   domain_idx=data.domain_idx,
+                                                                   neigh_mask=neigh_graph)
+
+                graph_loss, dgi_loss, recon_loss = self.model.loss(x=data.x[:data.batch_size],
+                                                                   recon_x=recon_x[:data.batch_size],
+                                                                   latent_x=latent_x[:data.batch_size],
+                                                                   neg_x=neg_x[:data.batch_size],
+                                                                   pos_summary=pos_summary[:data.batch_size])
 
                 # update memory bank
-                self.update_bank(idx, latent_x, alpha=alpha)
-                intra_inst = contrast_loss(feat1=latent_x, feat2=self.header_bank[idx], tau=tau1, weight=1.)
-                intra_clst = contrast_loss(feat1=latent_x.T, feat2=self.header_bank[idx].T, tau=tau1, weight=1.)
+                self.update_bank(idx, latent_x[:data.batch_size], alpha=alpha)
+
+                intra_inst = contrast_loss(feat1=latent_x[:data.batch_size],
+                                           feat2=self.header_bank[idx],
+                                           tau=tau1,
+                                           weight=1.)
+                intra_clst = contrast_loss(feat1=latent_x[:data.batch_size].T,
+                                           feat2=self.header_bank[idx][:data.batch_size].T,
+                                           tau=tau1,
+                                           weight=1.)
                 # Maximize clustering entropy to avoid all data clustering into the same class
-                entropy_clst = trivial_entropy(feat=latent_x, tau=tau2, weight=1.)
+                entropy_clst = trivial_entropy(feat=latent_x[:data.batch_size], tau=tau2, weight=1.)
+
                 loss = graph_loss + dgi_loss + recon_loss + intra_inst + entropy_clst + intra_clst
                 for i in np.delete(range(len(self.dataset.data_list)), idx):
                     inter_loss = cross_instance_loss(
-                        feat1=latent_x, feat2=self.header_bank[i], tau=tau3, weight=1.)
+                        feat1=latent_x[:data.batch_size], feat2=self.header_bank[i], tau=tau3, weight=1.)
                     loss += inter_loss
 
                 epoch_loss.append(loss)
@@ -236,7 +222,7 @@ class Spatialign:
                   f"EarlyStopping counter: {early_stop.counter} out of {patient}",
                   flush=True, end="")
             if early_stop.counter == 0:
-                self.save_checkpoint()
+                self.save_checkpoint(model=self.model)
             if early_stop.stop_flag:
                 print(f"\n  {get_format_time()} Model Training Finished!")
                 print(f"  {get_format_time()} Trained checkpoint file has been saved to {self.ckpt_path}")
@@ -245,14 +231,18 @@ class Spatialign:
     @get_running_time
     @torch.no_grad()
     def alignment(self):
-        self.load_checkpoint()
+        self.load_checkpoint(model=self.model)
         self.model.eval()
         data_list = []
-        for idx, dataset in enumerate(self.dataset.loader_list):
-            dataset = dataset.to(self.device)
-            _, _, _, latent_x, recon_x = self.model(
-                x=dataset.x, edge_index=dataset.edge_index, edge_weight=dataset.edge_weight,
-                domain_idx=dataset.domain_idx, neigh_mask=dataset.neigh_graph)
+        for idx, loader in enumerate(self.dataset.tester_list):
+            dataset = next(iter(loader)).to(self.device)
+            neigh_graph = torch.zeros((dataset.num_nodes, dataset.num_nodes), dtype=torch.float, device=self.device)
+            neigh_graph[dataset.edge_index[0], dataset.edge_index[1]] = 1.
+            latent_x, neg_x, pos_summary, recon_x = self.model(x=dataset.x,
+                                                               edge_index=dataset.edge_index,
+                                                               edge_weight=dataset.edge_weight,
+                                                               domain_idx=dataset.domain_idx,
+                                                               neigh_mask=neigh_graph)
             data = AnnData(sp.csr_matrix(recon_x.detach().cpu().numpy()))
             data.obsm["correct"] = latent_x.detach().cpu().numpy()
 

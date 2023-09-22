@@ -15,7 +15,6 @@ from spatialign import Spatialign
 sys.path.append(os.getcwd())
 warnings.filterwarnings("ignore")
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="spatialign Running...")
     # init parameters
@@ -40,6 +39,8 @@ if __name__ == "__main__":
                         help="'sc.pp.highly_variable_genes' parameter, valid when 'is_reduce' is True, default, 2000.")
     parser.add_argument("--n_neigh", default=15, type=int,
                         help="The number of neighbors selected when constructing a spatial neighbor graph. default, 15.")
+    parser.add_argument("--mask_rate", default=0.5, type=int,
+                        help="The rate of training size. default, 0.5")
     parser.add_argument("--is_undirected", default=True, type=bool,
                         help="Whether the constructed spatial neighbor graph is undirected graph, default, True.")
     parser.add_argument("--latent_dims", default=100, type=int,
@@ -65,10 +66,34 @@ if __name__ == "__main__":
                         help="Cross-batch instance self-supervised learning parameter, default, 0.5")
 
     args = parser.parse_args()
-    args.data_path = ["/media/Data/zhangchao/zhangchao/batcheffectremoval/dataset/ob/stereo_olfactory_bulb_ann.h5ad",
-                      "/media/Data/zhangchao/zhangchao/batcheffectremoval/dataset/ob/visium_olfactory_bulb_ann.h5ad"]
+    # args.data_path = ["./demo_data/stereo_olfactory_bulb_ann.h5ad",
+    #                   "./demo_data/visium_olfactory_bulb_ann.h5ad",
+    #                   "./demo_data/stereo_ob_SS200000213BR_C5_bin200_ann.h5ad"]
+
+    # args.data_path = [
+    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E9.5_DP8400015286BL_D2.h5ad",
+    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E12.5_FP200000587TR_D4.h5ad",
+    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E13.5_SS200000124BR_C3C4.h5ad",
+    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E14.5_SS200000108BR_C3C4.h5ad",
+    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E15.5_SS200000108BR_E1E2.h5ad",
+    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E16.5_SS200000124BR_D1D2.h5ad", ]
+
+    args.data_path = [
+        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/FP200000421BR_D1.h5ad",
+        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/FP200000421BR_D3.h5ad",
+        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/FP200000421BR_D4.h5ad",
+        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/FP200000421BR_E4.h5ad",
+        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/SS200000553BL_B3.h5ad",
+        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/SS200000553BL_C1.h5ad",
+        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/SS200000681TL_D5.h5ad",]
+
+    args.save_path = "./output/GBM"
+    args.gpu = 1
     args.is_norm_log = True
     args.is_verbose = False
+    args.tau1 = 0.02
+    args.tau2 = 0.01
+    args.tau3 = 0.1
 
     model = Spatialign(*args.data_path,
                        min_genes=args.min_genes,
@@ -81,6 +106,7 @@ if __name__ == "__main__":
                        n_pcs=args.n_pcs,
                        n_hvg=args.n_hvg,
                        n_neigh=args.n_neigh,
+                       mask_rate=[0.2]*7,
                        is_undirected=args.is_undirected,
                        latent_dims=args.latent_dims,
                        is_verbose=args.is_verbose,

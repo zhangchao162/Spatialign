@@ -12,6 +12,7 @@ import torch_geometric
 from anndata import AnnData
 from torch_geometric.data import Data
 from torch_geometric.utils import to_undirected
+from torch_geometric.loader import NeighborLoader
 
 from spatialign.utils import get_format_time
 
@@ -44,6 +45,7 @@ class Dataset:
     :param is_undirected: bool
         Whether the constructed spatial neighbor graph is undirected graph, default, True.
     """
+
     def __init__(self,
                  *data_path: str,
                  min_genes: int = 20,
@@ -56,6 +58,7 @@ class Dataset:
                  n_pcs: int = 100,
                  n_hvg: int = 2000,
                  n_neigh: int = 15,
+                 mask_rate=.5,
                  is_undirected: bool = True):
 
         self.data_path = data_path
@@ -63,9 +66,9 @@ class Dataset:
         self.is_scale = is_scale
         self.data_list = []
         self.batch_key = batch_key
-        self.merge_data, self.loader_list = self.get_loader(
+        self.merge_data, self.trainer_list, self.tester_list = self.get_loader(
             min_genes=min_genes, min_cells=min_cells, is_reduce=is_reduce, is_hvg=is_hvg, n_pcs=n_pcs, n_hvg=n_hvg,
-            n_neigh=n_neigh, is_undirected=is_undirected)
+            n_neigh=n_neigh, mask_rate=mask_rate, is_undirected=is_undirected)
         self.n_domain = self.merge_data.obs[batch_key].cat.categories.size
         self.n_node = self.merge_data.shape[0]
 
@@ -80,15 +83,17 @@ class Dataset:
                    n_pcs=50,
                    n_hvg=2000,
                    n_neigh=30,
+                   mask_rate=.5,
                    is_undirected=True):
         merge_data = self._reader(min_genes, min_cells)
         if is_hvg:
             sc.pp.highly_variable_genes(merge_data, flavor="seurat_v3", n_top_genes=n_hvg)
             merge_data = merge_data[:, merge_data.var["highly_variable"]]
 
-        dataset_list = self._loader(
-            merge_data=merge_data, is_reduce=is_reduce, n_pcs=n_pcs, n_neigh=n_neigh, is_undirected=is_undirected)
-        return merge_data, dataset_list
+        trainer_list, tester_list = self._loader(
+            merge_data=merge_data, is_reduce=is_reduce, n_pcs=n_pcs, n_neigh=n_neigh, mask_rate=mask_rate,
+            is_undirected=is_undirected)
+        return merge_data, trainer_list, tester_list
 
     def _reader(self, min_genes, min_cells):
         print(f"{get_format_time()} Found Dataset: ")
@@ -125,8 +130,8 @@ class Dataset:
             pca_tensor = torch.matmul(x_tensor, v)
             return pca_tensor
 
-    def _loader(self, merge_data, is_reduce=False, n_pcs=100, n_neigh=15, is_undirected=True):
-        dataset_list = []
+    def _loader(self, merge_data, is_reduce=False, n_pcs=100, n_neigh=15, mask_rate=1., is_undirected=True):
+        train_list, test_list = [], []
         if "spatial" in merge_data.obsm_keys():
             print(f"{get_format_time()}: Spatial coordinates are used to calculate nearest neighbor graphs")
             spatial_key = "spatial"
@@ -134,7 +139,20 @@ class Dataset:
             print(f"{get_format_time()}: PCA embedding are used to calculate nearest neighbor graphs")
             spatial_key = "pca"
 
-        for d_idx, domain in enumerate(merge_data.obs[self.batch_key].cat.categories):
+        batch_list = merge_data.obs[self.batch_key].cat.categories
+        if not mask_rate:
+            mask_rate = [1.] * len(batch_list)
+        elif isinstance(mask_rate, list) and len(mask_rate) != len(batch_list):
+            raise ValueError(f"Got an invalid `mask_rate`, the length of `mask_rate` must equal {len(batch_list)}!")
+        elif isinstance(mask_rate, float):
+            if 0. < mask_rate <= 1.:
+                mask_rate = [mask_rate] * len(batch_list)
+            else:
+                raise ValueError(
+                    "Got an invalid `mask_rate`. the value of `mask_rate` must be smaller 1., and must be non-negative.")
+        assert isinstance(mask_rate, list)
+
+        for d_idx, domain in enumerate(batch_list):
             data = merge_data[merge_data.obs[self.batch_key] == domain]
             feat_tensor = self.convert_tensor(data.X, q=n_pcs, is_reduce=is_reduce)
 
@@ -146,12 +164,33 @@ class Dataset:
 
             dataset = torch_geometric.transforms.KNNGraph(k=n_neigh, loop=True)(dataset)
             dataset.edge_weight = torch.ones(dataset.edge_index.size(1))
-            dataset.neigh_graph = torch.zeros((dataset.num_nodes, dataset.num_nodes), dtype=torch.float)
-            dataset.neigh_graph[dataset.edge_index[0], dataset.edge_index[1]] = 1.
             if is_undirected:
                 dataset.edge_index, dataset.edge_weight = to_undirected(dataset.edge_index, dataset.edge_weight)
-                dataset.edge_weight = torch.ones_like(dataset.edge_weight)
+                dataset.edge_weight = torch.ones(dataset.edge_index.size(1))
+
+            # dataset.neigh_graph = torch.zeros((dataset.num_nodes, dataset.num_nodes), dtype=torch.float)
+            # dataset.neigh_graph[dataset.edge_index[0], dataset.edge_index[1]] = 1.
+
             dataset.domain_idx = torch.tensor([d_idx] * data.shape[0], dtype=torch.int32)
             dataset.idx = torch.tensor(range(data.shape[0]), dtype=torch.int32)
-            dataset_list.append(dataset)
-        return dataset_list
+            dataset.mask, train_size = self.sample_mask(dataset.size(0), mask_rate[d_idx])
+            print(f"  All spots/cells: {data.shape[0]}, Training spots/cells: {train_size}")
+
+            train_loader = NeighborLoader(dataset, num_neighbors=[n_neigh] * 2, input_nodes=dataset.mask,
+                                          batch_size=train_size)
+
+            test_loader = NeighborLoader(dataset, num_neighbors=[-1], batch_size=dataset.size(0), input_nodes=None)
+
+            train_list.append(train_loader)
+            test_list.append(test_loader)
+
+        return train_list, test_list
+
+    def sample_mask(self, n_node, tau=0.5):
+        train_size = int(n_node * tau)
+        select_idx = torch.randperm(n_node)[:train_size]
+        mask = torch.zeros(n_node)
+        mask[select_idx] = 1
+        mask = mask.bool()
+
+        return mask, train_size

@@ -7,6 +7,7 @@
 from .domain_specific_batch_norm import DomainSpecificBN1d
 from .embed_layer import EmbeddingLayer
 from .graph_vae import GraphVAE
+from .graph_sage import SAGE
 from .residual_bottleneck import ResidualLayer
 from .embed_model import FeatEmbed, ResidualEmbed
 from .dgi import DGI

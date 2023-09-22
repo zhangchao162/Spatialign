@@ -7,21 +7,21 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch_geometric.nn import GCNConv, VGAE
+from torch_geometric.nn import VGAE, SAGEConv
 from torch_geometric.utils import remove_self_loops, add_self_loops, negative_sampling
 
 
 class GraphEncoder(nn.Module):
     def __init__(self, input_dims, output_dims):
         super(GraphEncoder, self).__init__()
-        self.gcn = GCNConv(input_dims, output_dims, improved=True)
-        self.mu = GCNConv(output_dims, output_dims, improved=True)
-        self.var = GCNConv(output_dims, output_dims, improved=True)
+        self.sage = SAGEConv(input_dims, output_dims)
+        self.mu = SAGEConv(output_dims, output_dims)
+        self.var = SAGEConv(output_dims, output_dims)
 
     def forward(self, x, edge_index, edge_weight):
-        feat_x = self.gcn(x, edge_index, edge_weight).relu_()
-        mu = self.mu(feat_x, edge_index, edge_weight)
-        var = self.var(feat_x, edge_index, edge_weight)
+        feat_x = self.sage(x, edge_index).relu_()
+        mu = self.mu(feat_x, edge_index)
+        var = self.var(feat_x, edge_index)
         return mu, var
 
 

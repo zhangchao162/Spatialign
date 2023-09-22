@@ -4,5 +4,6 @@
 # @Author  : zhangchao
 # @File    : __init__.py.py
 # @Email   : zhangchao5@genomics.cn
+from .base import spatiAlignBase
 from .model import DGIAlignment
 from .trainer import Spatialign

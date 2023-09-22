@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from spatialign.module import FeatEmbed, ResidualEmbed, GraphVAE, EmbeddingLayer
+from spatialign.module import FeatEmbed, ResidualEmbed, GraphVAE, EmbeddingLayer, SAGE
 
 
 class Encoder(nn.Module):
@@ -19,6 +19,7 @@ class Encoder(nn.Module):
         self.residual = ResidualEmbed(
             input_dims=1024, output_dims=output_dims, n_domain=n_domain, n_layers=2, act=act, p=p)
         self.graph = GraphVAE(output_dims, output_dims)
+        # self.graph = SAGE(output_dims, output_dims)
         self.trans_g = FeatEmbed(output_dims, output_dims, n_domain, 2, act, 0)
         self.trans1 = EmbeddingLayer(output_dims * 2, output_dims, n_domain, act=act, drop_rate=0)
         self.trans2 = EmbeddingLayer(output_dims, output_dims, 0, act=act, drop_rate=0)
@@ -42,13 +43,10 @@ class DGI(nn.Module):
 
     def forward(self, x, edge_index, edge_weight, domain_idx, neigh_mask):
         pos_x = self.encoder(x, edge_index, edge_weight, domain_idx)
-        graph_loss = 1 / x.size(0) * self.encoder.graph.vgae.kl_loss() + self.encoder.graph.graph_loss(z=pos_x)
         pos_summary = self.readout(pos_x, neigh_mask)
-
         cor = self.corruption(x, edge_index, edge_weight, domain_idx)
         neg_x = self.encoder(*cor)
-
-        return pos_x, neg_x, pos_summary, graph_loss
+        return pos_x, neg_x, pos_summary
 
     def corruption(self, x, edge_index, edge_weight, domain_idx):
         return x[torch.randperm(x.size(0))], edge_index, edge_weight, domain_idx

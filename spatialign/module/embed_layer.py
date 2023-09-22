@@ -14,9 +14,9 @@ class EmbeddingLayer(nn.Module):
         super(EmbeddingLayer, self).__init__()
         self.fc = nn.Linear(input_dims, output_dims)
         if n_domain == 1:
-            self.bns = nn.BatchNorm1d(output_dims)
+            self.bns = nn.BatchNorm1d(output_dims, affine=True)
         elif n_domain > 1:
-            self.bns = DomainSpecificBN1d(output_dims, n_domain)
+            self.bns = DomainSpecificBN1d(output_dims, n_domain, affine=True)
         else:
             self.bns = None
 
