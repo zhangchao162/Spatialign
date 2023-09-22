@@ -66,26 +66,9 @@ if __name__ == "__main__":
                         help="Cross-batch instance self-supervised learning parameter, default, 0.5")
 
     args = parser.parse_args()
-    # args.data_path = ["./demo_data/stereo_olfactory_bulb_ann.h5ad",
-    #                   "./demo_data/visium_olfactory_bulb_ann.h5ad",
-    #                   "./demo_data/stereo_ob_SS200000213BR_C5_bin200_ann.h5ad"]
-
-    # args.data_path = [
-    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E9.5_DP8400015286BL_D2.h5ad",
-    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E12.5_FP200000587TR_D4.h5ad",
-    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E13.5_SS200000124BR_C3C4.h5ad",
-    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E14.5_SS200000108BR_C3C4.h5ad",
-    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E15.5_SS200000108BR_E1E2.h5ad",
-    #     "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/mouse_embryo2/E16.5_SS200000124BR_D1D2.h5ad", ]
-
-    args.data_path = [
-        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/FP200000421BR_D1.h5ad",
-        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/FP200000421BR_D3.h5ad",
-        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/FP200000421BR_D4.h5ad",
-        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/FP200000421BR_E4.h5ad",
-        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/SS200000553BL_B3.h5ad",
-        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/SS200000553BL_C1.h5ad",
-        "/jdfssz1/ST_BIOINTEL/P20Z10200N0157/Bioinformatic_Frontier_Algorithms/05.user/zhangchao5/pycharm_codes/2023/dataset/GBM_yuanjingnan/SS200000681TL_D5.h5ad",]
+    args.data_path = ["./demo_data/stereo_olfactory_bulb_ann.h5ad",
+                      "./demo_data/visium_olfactory_bulb_ann.h5ad",
+                      "./demo_data/stereo_ob_SS200000213BR_C5_bin200_ann.h5ad"]
 
     args.save_path = "./output/GBM"
     args.gpu = 1
@@ -106,7 +89,7 @@ if __name__ == "__main__":
                        n_pcs=args.n_pcs,
                        n_hvg=args.n_hvg,
                        n_neigh=args.n_neigh,
-                       mask_rate=[0.2]*7,
+                       mask_rate=[0.2]*3,
                        is_undirected=args.is_undirected,
                        latent_dims=args.latent_dims,
                        is_verbose=args.is_verbose,
