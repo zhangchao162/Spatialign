@@ -14,7 +14,7 @@ class DGIAlignment(nn.Module):
         super().__init__()
         self.dgi = DGI(input_dims, output_dims, n_domain, act, p)
         self.decoder = EmbeddingLayer(
-            input_dims=output_dims, output_dims=input_dims, n_domain=n_domain, act=act, drop_rate=p)
+            input_dims=output_dims, output_dims=input_dims, n_domain=0, act=act, drop_rate=p)
 
     def forward(self, x, edge_index, edge_weight, domain_idx, neigh_mask):
         latent_x, neg_x, pos_summary = self.dgi(x, edge_index, edge_weight, domain_idx, neigh_mask)
@@ -22,11 +22,14 @@ class DGIAlignment(nn.Module):
         return latent_x, neg_x, pos_summary, recon_x
 
     def loss(self, x, recon_x, latent_x, neg_x, pos_summary):
-        graph_loss = 1 / latent_x.size(0) * self.dgi.encoder.graph.vgae.kl_loss(
-            self.dgi.encoder.graph.vgae.__mu__,
-            self.dgi.encoder.graph.vgae.__logstd__
-        )
+        if self.dgi.encoder.graph._get_name() != "SAGE":
+            graph_loss = 1 / latent_x.size(0) * self.dgi.encoder.graph.vgae.kl_loss(
+                self.dgi.encoder.graph.vgae.__mu__,
+                self.dgi.encoder.graph.vgae.__logstd__
+            )
+        else:
+            graph_loss = None
 
         dgi_loss = self.dgi.loss(latent_x, neg_x, pos_summary)
-        recon_loss = scale_mse(recon_x=recon_x, x=x)
+        recon_loss = scale_mse(recon_x=recon_x, x=x, alpha=0.5)
         return graph_loss, dgi_loss, recon_loss

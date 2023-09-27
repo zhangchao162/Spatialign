@@ -10,7 +10,9 @@ import warnings
 import argparse
 from typing import Union
 
+from config import conf_ob, conf_gbm, conf_embryonic
 from spatialign import Spatialign
+from test import visualization
 
 sys.path.append(os.getcwd())
 warnings.filterwarnings("ignore")
@@ -57,26 +59,33 @@ if __name__ == "__main__":
     parser.add_argument("--lr", default=1e-3, type=float, help="Learning rate, default, 1e-3.")
     parser.add_argument("--max_epoch", default=500, type=int, help="The number of maximum epochs, default, 500.")
     parser.add_argument("--alpha", default=0.5, type=float, help="The momentum parameter, default, 0.5")
-    parser.add_argument("--patient", default=15, type=int, help="Early stop parameter, default, 15.")
+    parser.add_argument("--patient", default=10, type=int, help="Early stop parameter, default, 15.")
     parser.add_argument("--tau1", default=0.2, type=float,
                         help="Instance level and pseudo prototypical cluster level contrastive learning parameters, default, 0.2")
     parser.add_argument("--tau2", default=1., type=float,
                         help="Pseudo prototypical cluster entropy parameter, default, 1.")
     parser.add_argument("--tau3", default=0.5, type=float,
                         help="Cross-batch instance self-supervised learning parameter, default, 0.5")
+    parser.add_argument("--tau4", default=10., type=float,
+                        help="DGI contrast loss weight, default, 10.")
 
     args = parser.parse_args()
-    args.data_path = ["./demo_data/stereo_olfactory_bulb_ann.h5ad",
-                      "./demo_data/visium_olfactory_bulb_ann.h5ad",
-                      "./demo_data/stereo_ob_SS200000213BR_C5_bin200_ann.h5ad"]
 
-    args.save_path = "./output/GBM"
-    args.gpu = 1
+    # data = conf_ob
+    data = conf_gbm
+
+    args.gpu = 5
     args.is_norm_log = True
     args.is_verbose = False
-    args.tau1 = 0.02
-    args.tau2 = 0.01
-    args.tau3 = 0.1
+    args.is_scale = False
+    args.data_path = data["data_path"]
+    args.save_path = data["save_pth"]
+    args.mask_rate = data["mask_rate"]
+
+    args.tau1 = data["tau1"]
+    args.tau2 = data["tau2"]  #
+    args.tau3 = data["tau3"]  # the more big, the more close together.
+    args.tau4 = data["tau4"]  # the more big, the more far apart.
 
     model = Spatialign(*args.data_path,
                        min_genes=args.min_genes,
@@ -89,7 +98,7 @@ if __name__ == "__main__":
                        n_pcs=args.n_pcs,
                        n_hvg=args.n_hvg,
                        n_neigh=args.n_neigh,
-                       mask_rate=[0.2]*3,
+                       mask_rate=args.mask_rate,
                        is_undirected=args.is_undirected,
                        latent_dims=args.latent_dims,
                        is_verbose=args.is_verbose,
@@ -106,3 +115,5 @@ if __name__ == "__main__":
                 tau3=args.tau3)
 
     model.alignment()
+
+    visualization(save_pth=args.save_path, color=data["color"])

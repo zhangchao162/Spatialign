@@ -37,18 +37,3 @@ class GraphVAE(nn.Module):
         self.edge_index, self.edge_weight = edge_index, edge_weight
         self.feat_x = self.vgae.encode(x, edge_index, edge_weight)
         return self.feat_x
-
-    def graph_loss(self, z=None, edge_index=None, edge_weight=None):
-        assert self.feat_x is not None and self.edge_index is not None and self.edge_weight is not None
-        z = self.feat_x if z is None else z
-        edge_index = self.edge_index if edge_index is None else edge_index
-        edge_weight = self.edge_weight if edge_weight is None else edge_weight
-
-        pos_dec = self.vgae.decoder(z, edge_index, sigmoid=False)
-        pos_loss = F.binary_cross_entropy_with_logits(pos_dec, edge_weight)
-        pos_edge_index, _ = remove_self_loops(edge_index)
-        pos_edge_index, _ = add_self_loops(pos_edge_index)
-        neg_edge_index = negative_sampling(pos_edge_index, z.size(0))
-        neg_dec = self.vgae.decoder(z, neg_edge_index, sigmoid=False)
-        neg_loss = -F.logsigmoid(-neg_dec).mean()
-        return pos_loss + neg_loss

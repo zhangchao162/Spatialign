@@ -17,6 +17,7 @@ from typing import Union
 from collections import defaultdict
 
 from spatialign.module import contrast_loss, trivial_entropy, cross_instance_loss
+from spatialign.module.losses import pseudo_entropy
 from spatialign.utils import Dataset, get_format_time, get_running_time, EarlyStopping
 from spatialign.spatialign import DGIAlignment, spatiAlignBase
 
@@ -113,7 +114,7 @@ class Spatialign(spatiAlignBase):
 
     @torch.no_grad()
     @get_running_time
-    def init_bank(self):
+    def init_bank(self) -> dict:
         self.model.eval()
         header_bank = defaultdict()
 
@@ -126,7 +127,7 @@ class Spatialign(spatiAlignBase):
                                                                edge_weight=data.edge_weight,
                                                                domain_idx=data.domain_idx,
                                                                neigh_mask=neigh_graph)
-            header_bank[data_idx] = latent_x[:data.batch_size].detach()
+            header_bank[data_idx] = latent_x[:data.batch_size].cpu()
         return header_bank
 
     @torch.no_grad()
@@ -141,7 +142,8 @@ class Spatialign(spatiAlignBase):
               patient: int = 15,
               tau1: float = 0.2,
               tau2: float = 1.,
-              tau3: float = 0.5):
+              tau3: float = 0.5,
+              tau4: float = 10.):
         """
         Training spatialign
         :param lr:
@@ -158,12 +160,14 @@ class Spatialign(spatiAlignBase):
             Pseudo prototypical cluster entropy parameter, default, 1.
         :param tau3:
             Cross-batch instance self-supervised learning parameter, default, 0.5
+        :param tau4:
+            DGI learning parameter, default, 10
         :return:
         """
         early_stop = EarlyStopping(patience=patient)
         optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.95)
-        # scaler = torch.cuda.amp.GradScaler()
+        scaler = torch.cuda.amp.GradScaler()
         self.model.train()
 
         for eph in range(max_epoch):
@@ -172,52 +176,59 @@ class Spatialign(spatiAlignBase):
                 data = next(iter(loader)).to(self.device, non_blocking=True)
                 neigh_graph = torch.zeros((data.num_nodes, data.num_nodes), dtype=torch.float, device=self.device)
                 neigh_graph[data.edge_index[0], data.edge_index[1]] = 1.
-                # with torch.cuda.amp.autocast():
-                latent_x, neg_x, pos_summary, recon_x = self.model(x=data.x,
-                                                                   edge_index=data.edge_index,
-                                                                   edge_weight=data.edge_weight,
-                                                                   domain_idx=data.domain_idx,
-                                                                   neigh_mask=neigh_graph)
+                with torch.cuda.amp.autocast():
+                    latent_x, neg_x, pos_summary, recon_x = self.model(x=data.x,
+                                                                       edge_index=data.edge_index,
+                                                                       edge_weight=data.edge_weight,
+                                                                       domain_idx=data.domain_idx,
+                                                                       neigh_mask=neigh_graph)
 
-                graph_loss, dgi_loss, recon_loss = self.model.loss(x=data.x[:data.batch_size],
-                                                                   recon_x=recon_x[:data.batch_size],
-                                                                   latent_x=latent_x[:data.batch_size],
-                                                                   neg_x=neg_x[:data.batch_size],
-                                                                   pos_summary=pos_summary[:data.batch_size])
+                    graph_loss, dgi_loss, recon_loss = self.model.loss(x=data.x[:data.batch_size],
+                                                                       recon_x=recon_x[:data.batch_size],
+                                                                       latent_x=latent_x[:data.batch_size],
+                                                                       neg_x=neg_x[:data.batch_size],
+                                                                       pos_summary=pos_summary[:data.batch_size])
 
-                # update memory bank
-                self.update_bank(idx, latent_x[:data.batch_size], alpha=alpha)
+                    # update memory bank
+                    self.update_bank(idx, latent_x[:data.batch_size].cpu(), alpha=alpha)
 
-                intra_inst = contrast_loss(feat1=latent_x[:data.batch_size],
-                                           feat2=self.header_bank[idx],
-                                           tau=tau1,
-                                           weight=1.)
-                intra_clst = contrast_loss(feat1=latent_x[:data.batch_size].T,
-                                           feat2=self.header_bank[idx][:data.batch_size].T,
-                                           tau=tau1,
-                                           weight=1.)
-                # Maximize clustering entropy to avoid all data clustering into the same class
-                entropy_clst = trivial_entropy(feat=latent_x[:data.batch_size], tau=tau2, weight=1.)
+                    intra_inst = contrast_loss(feat1=latent_x[:data.batch_size],
+                                               feat2=self.header_bank[idx].to(self.device),
+                                               tau=0.07,
+                                               weight=tau1)
+                    intra_clst = contrast_loss(feat1=latent_x[:data.batch_size].T,
+                                               feat2=self.header_bank[idx][:data.batch_size].T.to(self.device),
+                                               tau=0.07,
+                                               weight=tau1)
+                    # Maximize clustering entropy to avoid all data clustering into the same class
+                    entropy_clst = trivial_entropy(feat=latent_x[:data.batch_size], tau=0.07, weight=tau1)
 
-                loss = graph_loss + dgi_loss + recon_loss + intra_inst + entropy_clst + intra_clst
-                for i in np.delete(range(len(self.dataset.data_list)), idx):
-                    inter_loss = cross_instance_loss(
-                        feat1=latent_x[:data.batch_size], feat2=self.header_bank[i], tau=tau3, weight=1.)
-                    loss += inter_loss
+                    pseudo_loss = pseudo_entropy(feat=latent_x[:data.batch_size], tau=0.07, weight=1. / data.batch_size)
+
+                    loss = tau4 * dgi_loss + tau2 * recon_loss + intra_inst + entropy_clst + intra_clst + pseudo_loss
+
+                    if graph_loss is not None:
+                        loss += graph_loss
+
+                    for i in np.delete(range(len(self.dataset.data_list)), idx):
+                        inter_loss = cross_instance_loss(
+                            feat1=latent_x[:data.batch_size], feat2=self.header_bank[i].to(self.device), tau=0.07,
+                            weight=tau3)
+                        loss += inter_loss
 
                 epoch_loss.append(loss)
             optimizer.zero_grad()
-            # scaler.scale(sum(epoch_loss)).backward()
-            # scaler.step(optimizer)
-            # scaler.update()
-            sum(epoch_loss).backward()
-            optimizer.step()
+            scaler.scale(sum(epoch_loss)).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            # sum(epoch_loss).backward()
+            # optimizer.step()
             scheduler.step()
 
-            early_stop(sum(epoch_loss).detach().cpu().numpy())
+            early_stop(sum(epoch_loss).item())
             print(f"\r  {get_format_time()} "
                   f"Epoch: {eph} "
-                  f"Loss: {sum(epoch_loss).detach().cpu().numpy():.4f} "
+                  f"Loss: {sum(epoch_loss).item():.4f} "
                   f"Loss min: {early_stop.loss_min:.4f} "
                   f"EarlyStopping counter: {early_stop.counter} out of {patient}",
                   flush=True, end="")
@@ -243,12 +254,12 @@ class Spatialign(spatiAlignBase):
                                                                edge_weight=dataset.edge_weight,
                                                                domain_idx=dataset.domain_idx,
                                                                neigh_mask=neigh_graph)
-            data = AnnData(sp.csr_matrix(recon_x.detach().cpu().numpy()))
-            data.obsm["correct"] = latent_x.detach().cpu().numpy()
+            data = AnnData(sp.csr_matrix(recon_x.cpu().numpy()))
+            data.obsm["correct"] = latent_x.cpu().numpy()
 
             data.obs = self.dataset.data_list[idx].obs
 
-            data.obsm["spatial"] = dataset.pos.detach().cpu().numpy()
+            data.obsm["spatial"] = dataset.pos.cpu().numpy()
             data.obs.index = self.dataset.data_list[idx].obs.index
             data.var_names = self.dataset.merge_data.var_names
             data.write_h5ad(osp.join(self.res_path, f"correct_data{idx}.h5ad"))

@@ -18,11 +18,11 @@ class Encoder(nn.Module):
             input_dims=input_dims, output_dims=1024, n_domain=n_domain, n_layers=1, act=act, p=p)
         self.residual = ResidualEmbed(
             input_dims=1024, output_dims=output_dims, n_domain=n_domain, n_layers=2, act=act, p=p)
-        self.graph = GraphVAE(output_dims, output_dims)
-        # self.graph = SAGE(output_dims, output_dims)
+        # self.graph = GraphVAE(output_dims, output_dims)
+        self.graph = SAGE(output_dims, output_dims)
         self.trans_g = FeatEmbed(output_dims, output_dims, n_domain, 2, act, 0)
         self.trans1 = EmbeddingLayer(output_dims * 2, output_dims, n_domain, act=act, drop_rate=0)
-        self.trans2 = EmbeddingLayer(output_dims, output_dims, 0, act=act, drop_rate=0)
+        self.trans2 = EmbeddingLayer(output_dims, output_dims, 1, act=act, drop_rate=0)
 
     def forward(self, x, edge_index, edge_weight, domain_idx):
         feat_x = self.reduce(x, domain_idx)
@@ -32,6 +32,9 @@ class Encoder(nn.Module):
         feat = torch.cat([feat_x, feat_g], dim=1)
         latent_x = self.trans1(feat, domain_idx)
         latent_x = self.trans2(latent_x, domain_idx)
+        del feat_x
+        del feat_g
+        del feat
         return latent_x
 
 
@@ -46,6 +49,7 @@ class DGI(nn.Module):
         pos_summary = self.readout(pos_x, neigh_mask)
         cor = self.corruption(x, edge_index, edge_weight, domain_idx)
         neg_x = self.encoder(*cor)
+        del cor
         return pos_x, neg_x, pos_summary
 
     def corruption(self, x, edge_index, edge_weight, domain_idx):
@@ -57,6 +61,8 @@ class DGI(nn.Module):
         r_sum = r_sum.expand((v_sum.shape[1], r_sum.shape[0])).T
         global_z = v_sum / r_sum
         global_z = F.normalize(global_z, p=2, dim=1)
+        del v_sum
+        del r_sum
         return global_z
 
     def discriminate(self, z, summary, sigmoid=True):

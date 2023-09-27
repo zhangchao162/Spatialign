@@ -16,9 +16,15 @@ Integrative analysis of spatially resolved transcriptomics datasets empowers a d
 
 
 # News  
+- [2023.09.27]        
+Update `spatiAlign` version. The updated model can train with less train-set and requires less GPU memory.      
+  > - Mini-batch all training datasets.      
+  > - Update `GCN` layer. For details, convert `GCNConv` layer to `SAGEConv` layer.
+                
 - [2023.08.13]     
   spatiAlign is online at [BioRxiv](https://doi.org/10.1101/2023.08.08.552402).        
-  doi: [https://doi.org/10.1101/2023.08.08.552402](https://doi.org/10.1101/2023.08.08.552402)
+  doi: [https://doi.org/10.1101/2023.08.08.552402](https://doi.org/10.1101/2023.08.08.552402)                
+
             
 # Citation
 If you use `spatiAlign` in your work, please cite the publication as follows:

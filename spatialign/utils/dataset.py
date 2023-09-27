@@ -102,13 +102,16 @@ class Dataset:
             data.var_names_make_unique()
             data.obs_names_make_unique()
 
-            if self.is_norm_log:
+            if min_cells > 0:
                 sc.pp.filter_cells(data, min_genes=min_genes)
+            if min_cells > 0:
                 sc.pp.filter_genes(data, min_cells=min_cells)
-                sc.pp.normalize_total(data, target_sum=1e4)
+
+            if self.is_norm_log:
+                sc.pp.normalize_total(data)
                 sc.pp.log1p(data)
             if self.is_scale:
-                sc.pp.scale(data, zero_center=False, max_value=10)
+                sc.pp.scale(data)
 
             self.data_list.append(data)
         [print(f"  cell nums: {data.shape[0]} gene nums: {data.shape[1]}") for data in self.data_list]

@@ -27,6 +27,10 @@ def trivial_entropy(feat, tau=0.07, weight=1.):
     return loss
 
 
+def pseudo_entropy(feat, tau=0.07, weight=1.):
+    return -(F.softmax(feat / tau, dim=1) * F.log_softmax(feat / tau, dim=1)).sum() * weight
+
+
 def cross_instance_loss(feat1, feat2, tau=0.07, weight=1.):
     sim_matrix = torch.einsum("ik, jk -> ij", feat1, feat2) / torch.einsum(
         "i, j -> ij", feat1.norm(p=2, dim=1), feat2.norm(p=2, dim=1))

@@ -13,10 +13,10 @@ class SAGELayer(nn.Module):
     def __init__(self, input_dims, output_dims):
         super(SAGELayer, self).__init__()
         self.layer = SAGEConv(input_dims, output_dims)
-        self.drop = nn.Dropout()
+        self.drop = nn.Dropout(p=0.2)
 
     def forward(self, x, edge_index):
-        x = self.layer(x, edge_index).relu_()
+        x = self.layer(x, edge_index)
         x = self.drop(x)
         return x
 
@@ -29,8 +29,8 @@ class SAGE(nn.Module):
         self.layer3 = SAGELayer(output_dims, output_dims)
 
     def forward(self, x, edge_index, edge_weight):
-        x = self.layer1(x, edge_index)
-        x = self.layer2(x, edge_index)
-        x = self.layer3(x, edge_index)
+        x = self.layer1(x, edge_index).relu_()
+        x = self.layer2(x, edge_index).relu_()
+        x = self.layer3(x, edge_index).relu_()
         return x
 
